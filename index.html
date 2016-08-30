@@ -1,0 +1,578 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="lib/onsenui/css/onsenui.css">
+  <link rel="stylesheet" href="lib/onsenui/css/onsen-css-components-default.css">
+  <link href="stylesheets/style.css"  rel="stylesheet" type="text/css" />
+
+
+  <script async defer src="http://maps.googleapis.com/maps/api/js?key=AIzaSyA5HaNn4glGwHp0oDiQfU5C8T2yMdkhJeU&libraries=placeses,visualization,drawing,geometry,places"></script>  
+  <script src="lib/angular/angular.js"></script> 
+  <script type="text/javascript" src="lib/angular/angular-route.js" ></script>  
+
+  <script src="lib/jquerey-1.12.3.min.js"></script>
+  <script src="lib/onsenui/js/onsenui.js"></script>
+  <script src="lib/onsenui/js/angular-onsenui.min.js"></script>
+
+
+  <script src="js/app.js"></script>
+
+
+</head>
+<body ng-app="foodsApp">
+  
+  <ons-navigator id="nav" var="nav" page="menu_bar"></ons-navigator>
+
+  <ons-template id="menu_bar">
+    <ons-splitter  var="menu"  id="menu" ng-controller="Menu" >
+      <ons-splitter-side  side="left" width="70%" collapse swipeable>
+        <ons-page>
+          <ons-row>
+            <ons-col>
+              <h4>{{sData.user.name}}</h4>
+            </ons-col>
+          </ons-row>
+          <ons-list>
+            <ons-list-item ng-click="load('login.html')" ng-if="!sData.user.name" tappable>Login</ons-list-item>
+            <ons-list-item ng-click="load('new_food.html')" ng-if="sData.user.name" tappable>Nuevo</ons-list-item>
+            <ons-list-item ng-click="load('signup.html')" ng-if="!sData.user.name" tappable>SignUp</ons-list-item>
+            <ons-list-item ng-click="logout()" ng-if="sData.user.name" tappable>Logout</ons-list-item>
+            <ons-list-item ng-click="get_my_foods()" ng-if="sData.user.name" tappable>Mis Alimentos</ons-list-item>
+          </ons-list>
+        </ons-page>
+      </ons-splitter-side>
+    <ons-splitter-content page="foods.html"></ons-splitter-content>
+  </ons-template>
+  
+
+<!-- //////////////////////////////////////////////////////////////////////////////////
+                                    FOODS
+ ////////////////////////////////////////////////////////////////////////////////// -->
+  <ons-template id="foods.html">
+    <ons-page ng-controller="Foods" id="foods">
+      
+      <ons-pull-hook ng-action="load($done)" var="loader">
+        <span ng-switch="loader.state">
+          <span ng-switch-when="initial"><ons-icon size="35px" icon="ion-arrow-down-a"></ons-icon> Pull down to refresh</span>
+          <span ng-switch-when="preaction"><ons-icon size="35px" icon="ion-arrow-up-a"></ons-icon> Release to refresh</span>
+          <span ng-switch-when="action"><ons-icon size="35px" spin="true" icon="ion-load-d"></ons-icon> Loading data...</span>
+        </span>
+      </ons-pull-hook>
+      <ons-list>
+        <ons-list-item modifier="chevron" class="item" ng-repeat="f in foods | orderBy:'distanceNum':false" ng-click="getFood(f._id)">
+          <ons-ripple color="#fff" background="rgba(0, 0, 0, 0.09)">
+          <ons-row>
+            <ons-col width="80px" ng-if="!f.image">
+              <img ng-src="icon.png" class="item-thum"></img>
+            </ons-col>
+            <ons-col width="80px" ng-if="f.image">
+              <img ng-src="http://54.187.17.15:8080/{{f.image}}" class="item-thum"></img>
+            </ons-col>
+            <ons-col>
+              <header>
+                <span class="item-title">{{f.name}}</span>
+                <span class="item-label active"><i class="fa fa-circle"></i></span>
+              </header>
+              <div ng-show="item.desc==''">
+                <p><span style='opacity: 0.7;'>
+                  <ons-icon icon='fa-spinner' spin='true'></ons-icon>Loading bacon...
+                </span></p>
+              </div>
+              <p class="item-desc"><ons-icon icon="clock-o" ></ons-icon>{{f.expires}}</p>
+              <p class="item-desc"><ons-icon icon="map-marker"></ons-icon>{{f.distance}}</p>
+            </ons-col>
+          </ons-row>
+          </ons-ripple>
+        </ons-list-item>
+      </ons-list>
+      <ons-toolbar>
+        <div class="left">
+          <ons-toolbar-button ng-click="menu.left.open()" modifier="light">
+            <ons-icon icon="md-menu"></ons-icon>
+          </ons-toolbar-button>
+        </div>
+        <div class="center">Alimentos</div>
+      </ons-toolbar>
+
+      <ons-fab position="bottom right" ng-click="new()">
+        <ons-icon icon="md-plus"></ons-icon>
+      </ons-fab>
+
+    </ons-page>
+  </ons-template>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// 
+                                        FOOD
+ ////////////////////////////////////////////////////////////////////////////////// -->
+
+<ons-template id="food.html">
+  <ons-page ng-controller="Food" id="food">
+
+    <ons-toolbar>
+      <div class="left">
+        <ons-back-button>Back</ons-back-button>
+      </div>
+      <div class="center">{{sData.food.name}}</div>
+      <div class="right">
+        <ons-toolbar-button>
+          <ons-icon icon="ellipsis-v"></ons-icon>
+        </ons-toolbar-button>
+      </div>        
+    </ons-toolbar>      
+
+    <div class="content">
+      <ons-row class="img-full" ng-if="!sData.food.image">
+        <img src="icon.png">
+      </ons-row> 
+      <ons-row class="img-full" ng-if="sData.food.image">
+        <img src="http://54.187.17.15:8080/{{sData.food.image}}">
+      </ons-row>
+      <ons-row class="description" >
+        <ul>
+          <li id="weight" class="clr-blue-grey"><i class="fa fa-anchor" aria-hidden="true"></i>{{sData.food.peso}}</li>
+          <li id="expires" ng-if="food.expires" class="clr-teal"><i class="fa fa-map-marker" aria-hidden="true"></i>{{sData.food.expires}}</li>
+          <li id="active" class="clr-light-green"><i class="fa fa-circle" aria-hidden="true"></i>Dsiponible</li>
+          <li id="distance" class="clr-amber"><i class="fa fa-map-marker" aria-hidden="true"></i>{{sData.food.distance}}</li>
+          <li id="description">{{sData.food.description}}</li>
+        </ul>
+      </ons-row>
+      <div class="map" ng-controller="Mapa">
+        <ng-map zoom="14" enter="{{center}}" id="map" lazy-init="true">
+          <directions
+          draggable="true"
+          panel="directions-panel"
+          travel-mode="{{travelMode}}"
+          origin="{{center}}"
+          destination="{{destination}}">
+        </directions>
+      </ng-map>
+    </div> 
+
+    <!--  <button ng-click="initMap('map')">Init Map</button> -->
+
+    <ons-row>
+      <ons-row class="travel" align="center">
+        <ons-col><a href="#" ng-click="travel('DRIVING')" class="clr-light-blue"><ons-icon size="30px" icon="ion-android-car"></ons-icon></a></ons-col>
+        <ons-col><a href="#" ng-click="travel('BICYCLING')" class="clr-light-blue"><ons-icon size="30px" icon="ion-android-bicycle"></ons-icon></a></ons-col>
+        <ons-col><a href="#" ng-click="travel('WALKING')" class="clr-light-blue"><ons-icon size="30px" icon="ion-android-walk"></ons-icon></a></ons-col>
+        <ons-col><a href="#" ng-click="travel('TRANSIT')" class="clr-light-blue"><ons-icon size="30px" icon="ion-android-bus"></ons-icon></a></ons-col>
+      </ons-row>
+    </ons-row>
+    <ons-row>
+      <div id="directions-panel"></div>
+    </ons-row>
+  </div>
+
+  <ons-fab position="bottom right" ng-click="getAlerts()">
+    <ons-icon icon="fa-commenting"></ons-icon>
+  </ons-fab>
+
+  </ons-page>
+</ons-template>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// 
+                                  NEW FOOD 1
+ ////////////////////////////////////////////////////////////////////////////////// -->
+
+  <ons-template id="new_food.html">
+    <ons-page id="new_food" >
+      <ons-toolbar>
+        <div class="left">
+          <ons-back-button></ons-back-button>
+        </div>
+        <div class="center">Publicando alimento</div>
+      </ons-toolbar>
+
+      <form name="new_food_form" ng-controller="new_food">
+      <ons-row class="form content">
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="name" name="name" modifier="underbar" placeholder="Nombre alimento" float ng-model="food.name" required></ons-input>
+            <span class="messages" ng-show="new_food_form.$submitted || new_food_form.name.$touched">
+            <span ng-show="new_food_form.name.$error.required">El campo es obligatorio.</span>
+          </span>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="peso" modifier="underbar" placeholder="Peso" float ng-model="food.peso"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="expires" modifier="underbar" placeholder="Fecha de vencimiento" float ng-model="food.expires" type="date"></ons-input>
+          </ons-col>
+        </ons-row>
+        
+        <ons-row align="center">
+          <ons-col>            
+            <textarea class="textarea" rows="6" id="description" modifier="underbar" placeholder="Descripción" float ng-model="food.description" ng-minlength="20" required></textarea>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col >
+          <ons-input  class="input-file" type="text" id="file" name="file" modifier="underbar" float value="{{picFile.$ngfName}}"></ons-input>
+            <ons-icon icon="fa-upload" size="25px" id="file" class="clr-deep-orange" ngf-select ng-model="picFile" name="file" ngf-pattern="'image/*'" ngf-accept="'image/*'" ngf-max-size="2MB" ngf-min-height="100" ngf-resize="{quality: .8}" style="margin-top: 10px;"></ons-icon>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <img ng-show="new_food_form.file.$valid"  src="" ngf-thumbnail="picFile" class="thumb" style="width: 200px; height: auto"/>
+          </ons-col>
+        </ons-row>
+        <span class="progress" ng-show="picFile.progress >= 0">
+          <div style="width:{{f.progress}}%" ng-bind="f.progress + '%'"></div>
+        </span>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-button  ng-click="picFile = null" ng-show="picFile" class="clr-btn-red"><ons-ripple></ons-ripple>Eliminar</ons-button>
+          </ons-col>
+        </ons-row>
+        
+      </ons-row>
+           
+      <ons-row align="bottom" class="footer">
+        <ons-col>
+          <ons-button ng-model="button" ng-click="add2(false, null)" modifier="large"><ons-ripple></ons-ripple>Cancelar</ons-button>
+        </ons-col>
+        <ons-col>
+          <ons-button ng-model="button" ng-click="add2(true, picFile)" ng-disabled="new_food_form.$invalid" modifier="large"><ons-ripple></ons-ripple>Guardar</ons-button>
+        </ons-col>
+      </ons-row>          
+      
+      </form>
+
+    </ons-page>
+  </ons-template>
+
+<!-- //////////////////////////////////////////////////////////////////////////////////
+                                    LOGIN
+////////////////////////////////////////////////////////////////////////////////// -->
+
+  <ons-template id="login.html">
+    <ons-page id="login" class="clr-br-deep-orange" ng-controller="login" >
+      <ons-toolbar>
+        <div class="left">
+          <ons-back-button>Back</ons-back-button>
+        </div>
+      </ons-toolbar>
+      <div style="text-align:center; margin-top: 30px;">
+        <p>
+          <ons-input id="user_name" modifier="underbar" placeholder="Username" float ng-model="user.user_name"></ons-input>
+        </p>
+        <p>
+          <ons-input id="password" modifier="underbar" type="password" placeholder="Password" float ng-model="user.password"></ons-input>
+        </p>
+        <p style="margin-top: 30px;">
+          <ons-button modifier="material" ng-click="login()"><ons-ripple></ons-ripple>Login</ons-button>
+        </p>
+      </div>
+    </ons-page>
+  </ons-template>
+
+  <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+                                <!-- SIGNUP 1 -->
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+  <ons-template id="signup.html">
+    <ons-page id="signup" ng-controller="signup">
+      <ons-toolbar>
+        <div class="left">
+          <ons-back-button>Back</ons-back-button>
+        </div>
+        <div class="center">
+        </div>
+      </ons-toolbar>
+
+      <ons-row class="form content">
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="first_name" name="first_name" modifier="underbar" placeholder="Nombres" float ng-model="user.first_name"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="last_name" name="last_name" modifier="underbar" placeholder="Apellidos" float ng-model="user.last_name"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="user_name" name="user_name" modifier="underbar" placeholder="Usuario" float ng-model="user.user_name"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input type="email" id="email" name="email" modifier="underbar" placeholder="E-mail" float ng-model="user.email"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input type="password" id="pw1" name="pw1" modifier="underbar" placeholder="Contraseña" float ng-model="user.password"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input type="password" id="pw2" name="pw2" modifier="underbar" placeholder="Contraseña" float ng-model="user.password"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="phone" name="phone" modifier="underbar" placeholder="Celular" float ng-model="user.phone"></ons-input>
+          </ons-col>
+        </ons-row>
+
+        <ons-row align="center">
+          <ons-col>
+            <ons-input id="address" name="address" modifier="underbar" placeholder="Dirreción" float ng-model="user.address" ng-autocomplete details="details1" options="options1"></ons-input>
+          </ons-col>
+        </ons-row>
+
+      </ons-row>
+
+      <ons-row>
+        <ons-col class="details">
+          <p>Dirección: {{details1.formatted_address}}</p>     
+          <p>Ciudad: {{details1.address_components[4].short_name}}</p>
+          <p>Localidad: {{details1.address_components[3].short_name}}</p>
+          <p>Barrio: {{details1.address_components[2].short_name}}</p>
+          <p>Codigo Postal: {{details1.address_components[7].short_name}}</p> 
+          <br>
+          <p>Estos datos no se mostrarán de manera publica a los otros usuarios de NO DESPERDICIO, hata que usted
+          acceda a publicarlos al momento en que otro usuario solicite su ubicación cuando desee aquirir un alimento de su lista de alimentos.</p>   
+        </ons-col>
+      </ons-row>
+
+      <ons-row align="bottom" class="footer">
+        <ons-col>
+          <ons-button ng-model="button" ng-click="" modifier="large"><ons-ripple></ons-ripple>Cancelar</ons-button>
+        </ons-col>
+        <ons-col>
+          <ons-button ng-model="button" ng-disabled="userForm.$invalid" ng-click="save_user(true, 'login.html')" modifier="large"><ons-ripple></ons-ripple>Siguiente</ons-button>
+        </ons-col>
+      </ons-row>  
+
+      
+
+
+      
+
+    </ons-page>
+  </ons-template>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+                                <!-- ALERT -->
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+  <ons-template id="alert.html">
+    <ons-page id="alert" ng-controller="Food">
+      <ons-toolbar>
+        <div class="left">
+          <ons-back-button ng-click="stop()">Back</ons-back-button>
+        </div>
+        <div class="center">{{sData.food.name}}</div>
+      </ons-toolbar>
+
+      <ons-row class="content">
+        <ons-col id="cont-msg">
+          <div id="messages">
+            <div ng-repeat="msg in sData.messages" class="containt">
+
+
+              <div class="cont left" ng-if="!msg.sender" >
+                <div class=" message ">
+                  <p>{{msg.msg}}</p>
+                  <span>{{msg.date | date:"h:mma"}}</span>
+                </div>
+              </div>
+              <div class="cont right" ng-if="msg.sender" >
+                <div class=" message ">
+                  <p>{{msg.msg}}</p>
+                  <span>{{msg.date | date:"h:mma"}}</span>
+                </div>   
+              </div>
+             
+            </div> 
+          </div> 
+        </ons-col>
+      </ons-row>
+
+     
+      <ons-row align="bottom" class="footer">
+        <ons-col>
+          <form ng-submit="send(sData.sender)" class="ng-pristine ng-valid">
+            <ons-row>
+              <ons-col width="85%">
+                <textarea rows="1" ng-model="data.message" class="ng-pristine ng-untouched ng-valid"></textarea>
+              </ons-col>
+              <ons-col  width="15%">
+                <button type="submit"><ons-icon icon="fa-angle-double-right" size="30px"></ons-icon></button> 
+              </ons-col>
+            </ons-row>         
+          </form>
+        </ons-col>
+      </ons-row>
+
+    </ons-page>
+  </ons-template>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+                                <!-- MY FOODS -->
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+  <ons-template id="my_foods.html">
+    <ons-page id="my_foods" class="foods" ng-controller="My_Foods">
+      <ons-toolbar>
+        <div class="left">
+          <ons-back-button>Back</ons-back-button>
+        </div>
+        <div class="center">Mis Alimentos</div>
+      </ons-toolbar>  
+
+      <ons-row>
+        <ons-col>
+          <ons-list>
+            <ons-list-item modifier="chevron" class="item" ng-repeat="f in sData.my_foods | orderBy:'name':false">
+              
+              <ons-row class="box">
+                <ons-col width="80px" ng-if="!f.image">
+                  <img ng-src="icon.png" class="item-thum"></img>
+                </ons-col>
+                <ons-col width="80px" ng-if="f.image">
+                  <img ng-src="http://54.187.17.15:8080/{{f.image}}" class="item-thum"></img>
+                </ons-col>
+                <ons-col>
+                  <header>
+                    <span class="item-title">{{f.name}}</span>                    
+                  </header>
+                  <ons-row align="right" style="margin-top:30px;">
+                    <ons-col>                      
+                    </ons-col>                    
+                    <ons-col width="50%" >
+                      <ons-icon icon="fa-eye" size="25px" ng-click="go_alert(f._id)"></ons-icon>
+                      <ons-icon icon="fa-pencil" size="25px" ng-click="edit(f._id)"></ons-icon>
+                      <ons-icon icon="fa-trash-o" size="25px" ng-click="deleted_food(f)"></ons-icon>
+                    </ons-col> 
+                  </ons-row>
+                  
+                </ons-col>
+              </ons-row>
+            </ons-list-item>
+          </ons-list>
+
+          
+        </ons-col>
+      </ons-row>
+
+      <ons-alert-dialog var="deleted_food">
+        <div class="alert-dialog-title">Eliminar publicación</div>
+        <div class="alert-dialog-content">
+          Va a terminar y eliminar la publicación del alimento {{food.name}}, ¿desea continuar?  
+        </div>
+        <div class="alert-dialog-footer">
+          <button class="alert-dialog-button" ng-click="close()">Cancel</button>
+          <button class="alert-dialog-button" ng-click="deleted()">OK</button>
+        </div>
+      </ons-alert-dialog> 
+    </ons-page>
+  </ons-template>
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+                                <!-- SIGNUP 1 -->
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+  <ons-template id="alerts_food.html">
+    <ons-page id="alerts_food" class="foods" ng-controller="My_Foods">
+      <ons-toolbar>
+        <div class="left">
+          <ons-back-button>Back</ons-back-button>
+        </div>
+        <div class="center">Mis Alimentos</div>
+      </ons-toolbar>
+      <ons-list>
+        <ons-list-item modifier="chevron" class="item" ng-repeat="f in sData.my_alerts" ng-click="chat(f)">
+          <ons-ripple color="#fff" background="rgba(0, 0, 0, 0.09)">
+          <ons-row class="box">
+            <ons-col width="80px" ng-if="!f.food.image">
+              <img ng-src="icon.png" class="item-thum"></img>
+            </ons-col>
+            <ons-col width="80px" ng-if="f.food.image">
+              <img ng-src="http://54.187.17.15:8080/{{f.food.image}}" class="item-thum"></img>
+            </ons-col>
+            <ons-col>
+              <header>
+                <span class="item-title">{{f.food.name}}</span>
+              </header>              
+              <p class="item-desc"><ons-icon icon="fa-user" ></ons-icon>Enviada por: {{f.sender.user_name}}</p>
+            </ons-col>
+          </ons-row>
+          </ons-ripple>
+        </ons-list-item>
+      </ons-list>
+    </ons-page>
+  </ons-template>
+
+  <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+                                <!-- ALERT FOODS -->
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+  <ons-template id="">
+    <ons-page id="" ng-controller="">
+      <ons-toolbar>
+        <div class="left">
+          <ons-back-button>Back</ons-back-button>
+        </div>
+        <div class="center">
+        </div>
+      </ons-toolbar>
+      
+    </ons-page>
+  </ons-template>
+  <!-- ////////////////////////////////////////////////////////////////////////////////// -->
+
+<!-- ////////////////////////////////////////////////////////////////////////////////// -->
+  
+  <ons-template id="about.html">
+    <ons-page>
+        </md-list>
+      </md-content>
+    </section>
+    </ons-page>
+  </ons-template>
+  
+  <!-- Controllers -->
+  <script type="text/javascript" src="js/controllers/menu.js"></script>
+  <script type="text/javascript" src="js/controllers/foods.js"></script>
+  <script type="text/javascript" src="js/controllers/Food.js"></script>
+  <script type="text/javascript" src="js/controllers/login.js"></script>
+  <script type="text/javascript" src="js/controllers/my_foods.js"></script>
+  <script type="text/javascript" src="js/controllers/new_food.js"></script>
+  <script type="text/javascript" src="js/controllers/signup.js"></script>
+
+
+  <!-- Directives -->
+  <script type="text/javascript" src="js/directives/pwcheck.js"></script>
+  <script type="text/javascript" src="js/directives/ngAutocomplete.js"></script>
+  <script type="text/javascript" src="js/directives/angucomplete.js"></script>
+  <!-- Services -->
+  <script type="text/javascript" src="js/services/foodsService.js"></script>  
+  <script type="text/javascript" src="js/services/ng-file-upload.js"></script>
+  <script type="text/javascript" src="js/services/ng-cookies.js" ></script>
+  <script type="text/javascript" src="js/services/Cookies.js" ></script>
+  <script type="text/javascript" src="js/services/ng-map.min.js" ></script>
+  <script type="text/javascript" src="js/services/sData.js" ></script>
+</body>
+</html>
